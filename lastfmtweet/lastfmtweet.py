@@ -1,19 +1,15 @@
-#!/usr/local/bin/python2.7
+#!/usr/bin/env python2
 # encoding: utf-8
 '''
-lastfmtweet -- shortdesc
+lastfmtweet -- Publish Lastfm charts on Twitter
 
-lastfmtweet is a description
-
-It defines classes_and_methods
-
-@author:     user_name
+@author:     nomorsad
 
 @copyright:  2014 organization_name. All rights reserved.
 
-@license:    license
+@license:    GPLv3 or
 
-@contact:    user_email
+@contact:    nomorsad.poubelle@gmail.com
 @deffield    updated: Updated
 '''
 
@@ -30,15 +26,13 @@ import string
 from datetime import date
 import tweepy
 import json
-from tweepy.error import TweepError
-from tweepy.oauth import OAuthError
 
 __all__ = []
 __version__ = 0.1
 __date__ = '2014-11-15'
 __updated__ = '2014-11-15'
 
-DEBUG = 1
+DEBUG = 0
 TESTRUN = 0
 PROFILE = 0
 
@@ -53,7 +47,9 @@ class CLIError(Exception):
         return self.msg
 
 def blacklist(name):
+    '''hardcoded list of excluded items'''
     
+    #TODO: move list into config file
     hardcoded_blacklist=[
                          'comptines',
                          ]
@@ -63,33 +59,35 @@ def blacklist(name):
             
     
 
-def get_print_list(username,top,period):
+def get_print_list(username,chart,period):
+    '''return LastFM XML chart as a simple list'''
     
-    url='http://ws.audioscrobbler.com/2.0/user/%s/top%ss.xml?period=%s' % (username,top,period)
+    url='http://ws.audioscrobbler.com/2.0/user/%s/top%ss.xml?period=%s' % (username,chart,period)
     print url
     raw_xml = urllib2.urlopen(url)
 
     print_list=[]
     charts=ElementTree.fromstring(raw_xml.read())
     
-    if top == 'artist':
+    if chart == 'artist':
         for artist in charts.findall('artist'):
             print_list.append(artist.find('name').text)
-    elif top == 'album':
+    elif chart == 'album':
         for album in charts.findall('album'):
             for artist in album.findall('artist'):
                 print_list.append("%s - %s" % (artist.find('name').text, album.find('name').text))
-    elif top == 'track':
+    elif chart == 'track':
         for track in charts.findall('track'):
             for artist in track.findall('artist'):
                 print_list.append("%s - %s" % (artist.find('name').text, track.find('name').text))
     else:
-        raise CLIError(Exception("unknown type %s" % top))
+        raise CLIError(Exception("unknown type %s" % chart))
         
     return print_list
 
 
 def summarize(print_list, prefix='', limit=140):
+    '''prepare message to be published'''
     text=prefix
     for add in print_list:
         
@@ -103,8 +101,14 @@ def summarize(print_list, prefix='', limit=140):
 
 
 def publish_twitter(text):
+    '''publish a status on Twitter'''
     
-    config = open(os.path.join(os.environ['HOME'],'.lastfm2twitter'))
+    config_file=os.path.join(os.environ['HOME'],'.lastfm2tweet')
+    try:
+        config = open(config_file)
+    except IOError, e:
+        raise Exception('%s' % e)
+            
     json_data = config.read()
     
     oauth_param = json.loads(json_data)
@@ -139,7 +143,7 @@ def main(argv=None): # IGNORE:C0111
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-  Created by user_name on %s.
+  Created by nomorsad on %s.
   Copyright 2014 organization_name. All rights reserved.
 
   Licensed under the Apache License 2.0
@@ -149,7 +153,7 @@ def main(argv=None): # IGNORE:C0111
   or conditions of any kind, either express or implied.
 
 USAGE
-''' % (program_shortdesc, str(__date__))
+''' % (program_shortdesc, program_version_message)
 
     try:
         # Setup argument parser
@@ -157,19 +161,19 @@ USAGE
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument("-u", "--username", dest="username", action="store",
                             required=True, help="LastFM username [default: %(default)s]")
-        parser.add_argument("-i", "--tweet", dest="tweet", action="store_true", help="Publish to Twitter [default: %(default)s]")
-        
         parser.add_argument("-p", "--period", dest="period", action="store",
                             default='3month',help="LastFM period [default: %(default)s]")
-        parser.add_argument("-t", "--top", dest="top", choices=['album','artist','track'],
+        parser.add_argument("-c", "--chart", dest="chart", choices=['album','artist','track'],
                             default ='artist', help="Chart type [default: %(default)s]")
+        
+        parser.add_argument("-t", "--tweet", dest="tweet", action="store_true", help="Publish to Twitter [default: %(default)s]")
                 
         # Process arguments
         args = parser.parse_args()
 
         username = args.username
         period = args.period
-        top = args.top
+        chart = args.chart
         verbose = args.verbose
         tweet = args.tweet
         
@@ -182,7 +186,7 @@ USAGE
                 print("Tweet mode off")
 
         month=date.today().strftime('%b')
-        text = summarize(get_print_list(username,top,period), prefix="Top %ss for %s on Lastfm:\n"% (top,month))
+        text = summarize(get_print_list(username,chart,period), prefix="Top %ss for %s from last.fm:\n"% (chart,month))
         
         if tweet:
             publish_twitter(text)
@@ -201,7 +205,7 @@ USAGE
             raise(e)
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
-        sys.stderr.write(indent + "  for help use --help")
+        sys.stderr.write(indent + "  for help use --help\n")
         return 2
     
     
@@ -209,12 +213,8 @@ USAGE
     
 if __name__ == "__main__":
     if DEBUG:
-        #sys.argv.append("-h")
+        sys.argv.append("-h")
         sys.argv.append("-v")
-        #sys.argv.append("-i")
-        sys.argv.append("-unomorsad")
-        sys.argv.append("-talbum")
-        sys.argv.append("-p1month")
     if TESTRUN:
         import doctest
         doctest.testmod()
