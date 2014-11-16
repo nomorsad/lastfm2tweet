@@ -28,6 +28,10 @@ from defusedxml import ElementTree
 import re
 import string
 from datetime import date
+import tweepy
+import json
+from tweepy.error import TweepError
+from tweepy.oauth import OAuthError
 
 __all__ = []
 __version__ = 0.1
@@ -63,12 +67,8 @@ def get_print_list(username,top,period):
     
     url='http://ws.audioscrobbler.com/2.0/user/%s/top%ss.xml?period=%s' % (username,top,period)
     print url
-    
-    try:
-        raw_xml = urllib2.urlopen(url)
-    except Exception, e:
-        raise CLIError(e)
-        
+    raw_xml = urllib2.urlopen(url)
+
     print_list=[]
     charts=ElementTree.fromstring(raw_xml.read())
     
@@ -100,6 +100,29 @@ def summarize(print_list, prefix='', limit=140):
             else:
                 text += "\n" + add
     return text
+
+
+def publish_twitter(text):
+    
+    config = open(os.path.join(os.environ['HOME'],'.lastfm2twitter'))
+    json_data = config.read()
+    
+    oauth_param = json.loads(json_data)
+    
+    for param in ('consumer_key','consumer_secret','key','secret'):
+        if param not in oauth_param:
+            raise Exception('missing param %s in config file' % param)
+        
+        #workaround of fucking HMAC function
+        oauth_param[param] = oauth_param[param].encode('ascii')
+    
+    auth = tweepy.OAuthHandler(oauth_param['consumer_key'], oauth_param['consumer_secret'])
+    auth.set_access_token(oauth_param['key'], oauth_param['secret'])
+    print "Authenticated as %s" % auth.get_username()
+    api = tweepy.API(auth)
+    api.update_status('tweepy + oauth is working well (message sent from my bot)')
+
+
 
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
@@ -134,7 +157,7 @@ USAGE
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument("-u", "--username", dest="username", action="store",
                             required=True, help="LastFM username [default: %(default)s]")
-        parser.add_argument("-i", "--tweet", dest="tweet", action="store", help="Tweet to this URL [default: %(default)s]")
+        parser.add_argument("-i", "--tweet", dest="tweet", action="store_true", help="Publish to Twitter [default: %(default)s]")
         
         parser.add_argument("-p", "--period", dest="period", action="store",
                             default='3month',help="LastFM period [default: %(default)s]")
@@ -158,7 +181,18 @@ USAGE
             else:
                 print("Tweet mode off")
 
+        month=date.today().strftime('%b')
+        text = summarize(get_print_list(username,top,period), prefix="Top %ss %s:"% (top,month), limit=160)
         
+        if tweet:
+            publish_twitter(text)
+        else:
+            print text
+            
+        if verbose > 0:
+                print("Done")
+
+
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
@@ -170,21 +204,14 @@ USAGE
         sys.stderr.write(indent + "  for help use --help")
         return 2
     
-    month=date.today().strftime('%b')
-    text = summarize(get_print_list(username,top,period), prefix="Top %ss %s:"% (top,month), limit=160)
     
-    if tweet:
-        pass
-    else:
-        print text
-        
-    if verbose > 0:
-            print("Done")
-
+    
+    
 if __name__ == "__main__":
     if DEBUG:
         #sys.argv.append("-h")
         sys.argv.append("-v")
+        sys.argv.append("-i")
         sys.argv.append("-unomorsad")
         sys.argv.append("-talbum")
         sys.argv.append("-p1month")
