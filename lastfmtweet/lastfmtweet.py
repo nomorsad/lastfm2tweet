@@ -94,11 +94,11 @@ def summarize(print_list, prefix='', limit=140):
     for add in print_list:
         
         if not blacklist(add):
-            new_len = len(text) + len(add) +1
+            new_len = len(text) + len(add) +2
             if new_len > limit:
                 break
             else:
-                text += "\n" + add
+                text += "\n " + add
     return text
 
 
@@ -120,7 +120,7 @@ def publish_twitter(text):
     auth.set_access_token(oauth_param['key'], oauth_param['secret'])
     print "Authenticated as %s" % auth.get_username()
     api = tweepy.API(auth)
-    api.update_status('tweepy + oauth is working well (message sent from my bot)')
+    api.update_status(text)
 
 
 
@@ -182,7 +182,7 @@ USAGE
                 print("Tweet mode off")
 
         month=date.today().strftime('%b')
-        text = summarize(get_print_list(username,top,period), prefix="Top %ss %s:"% (top,month), limit=160)
+        text = summarize(get_print_list(username,top,period), prefix="Top %ss for %s on Lastfm:\n"% (top,month))
         
         if tweet:
             publish_twitter(text)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     if DEBUG:
         #sys.argv.append("-h")
         sys.argv.append("-v")
-        sys.argv.append("-i")
+        #sys.argv.append("-i")
         sys.argv.append("-unomorsad")
         sys.argv.append("-talbum")
         sys.argv.append("-p1month")
