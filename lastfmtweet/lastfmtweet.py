@@ -79,28 +79,33 @@ def get_print_list(username, chart, period):
     elif chart == 'album':
         for album in charts.findall('album'):
             for artist in album.findall('artist'):
-                print_list.append("%s - %s" % (artist.find('name').text, album.find('name').text))
+                print_list.append("%s-%s" % (artist.find('name').text, album.find('name').text))
     elif chart == 'track':
         for track in charts.findall('track'):
             for artist in track.findall('artist'):
-                print_list.append("%s - %s" % (artist.find('name').text, track.find('name').text))
+                print_list.append("%s-%s" % (artist.find('name').text, track.find('name').text))
     else:
         raise CLIError(Exception("unknown type %s" % chart))
 
     return print_list
 
 
-def summarize(print_list, prefix='', limit=140):
+def summarize(print_list, prefix='', limit=140, limit_item=40):
     '''prepare message to be published'''
     text = prefix
     for add in print_list:
 
-        if not blacklist(add):
-            new_len = len(text) + len(add) + 2
-            if new_len > limit:
-                break
-            else:
-                text += "\n " + add
+        if blacklist(add):
+            next
+
+        if len(add) > limit_item:
+            add = '{text:.{range}}...'.format(text=add, range=limit_item-3)
+
+        new_len = len(text) + len(add) + 1
+        if new_len > limit:
+            break
+        else:
+            text += "\n" + add
     return text
 
 
@@ -189,9 +194,9 @@ USAGE
             else:
                 print("Tweet mode off")
 
-        month = date.today().strftime('%b')
+        month = date.today().strftime('%B')
         text = summarize(get_print_list(username, chart, period),
-                         prefix="Top %ss for %s from last.fm:\n" % (chart, month))
+                         prefix="Top %s:\n" % (month, ))
 
         if tweet:
             publish_twitter(text)
