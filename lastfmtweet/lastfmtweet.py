@@ -96,7 +96,7 @@ def summarize(print_list, prefix='', limit=140, limit_item=40):
     for add in print_list:
 
         if blacklist(add):
-            next
+            continue
 
         if len(add) > limit_item:
             add = '{text:.{range}}...'.format(text=add, range=limit_item-3)
