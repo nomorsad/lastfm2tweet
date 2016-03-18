@@ -109,31 +109,36 @@ def summarize(print_list, prefix='', limit=140, limit_item=40):
     return text
 
 
-def publish_twitter(text):
+def publish_twitter(text, consumer_key, oauth_param):
     '''publish a status on Twitter'''
-
-    config_file = os.path.join(os.environ['HOME'], '.lastfm2tweet')
-    try:
-        config = open(config_file)
-    except IOError, e:
-        raise Exception('%s' % e)
-
-    json_data = config.read()
-
-    oauth_param = json.loads(json_data)
-
-    for param in ('consumer_key', 'consumer_secret', 'key', 'secret'):
-        if param not in oauth_param:
-            raise Exception('missing param %s in config file' % param)
-
-        # workaround of fucking HMAC function
-        oauth_param[param] = oauth_param[param].encode('ascii')
 
     auth = tweepy.OAuthHandler(oauth_param['consumer_key'], oauth_param['consumer_secret'])
     auth.set_access_token(oauth_param['key'], oauth_param['secret'])
     print "Authenticated as %s" % auth.get_username()
     api = tweepy.API(auth)
     api.update_status(text)
+
+def read_config():
+
+    config_filename = os.path.join(os.environ['HOME'], '.lastfm2tweet')
+    try:
+        config_file = open(config_filename)
+    except IOError, e:
+        raise Exception('%s' % e)
+
+    json_data = config_file.read()
+
+    config = json.loads(json_data)
+
+    for param in ('lastfm_apikey','consumer_key', 'consumer_secret', 'key', 'secret'):
+        if param not in config:
+            raise Exception('missing param %s in config file' % param)
+
+        # workaround of fucking HMAC function
+        config[param] = config[param].encode('ascii')
+
+    return config
+
 
 
 def main(argv=None):  # IGNORE:C0111
@@ -194,12 +199,13 @@ USAGE
             else:
                 print("Tweet mode off")
 
+        config=read_config()
         month = date.today().strftime('%B')
         text = summarize(get_print_list(username, chart, period),
                          prefix="Top %s:\n" % (month, ))
 
         if tweet:
-            publish_twitter(text)
+            publish_twitter(text, config)
         else:
             print text
 
