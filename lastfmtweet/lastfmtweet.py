@@ -63,25 +63,25 @@ def blacklist(name):
     return regex.search(name)
 
 
-def get_print_list(username, chart, period):
+def get_print_list(username, chart, period, api_key):
     '''return LastFM XML chart as a simple list'''
 
-    url = 'http://ws.audioscrobbler.com/2.0/user/%s/top%ss.xml?period=%s' % (username, chart, period)
+    url = 'http://ws.audioscrobbler.com/2.0/?method=user.gettop%s&user=%s&period=%s&api_key=%s' % (chart, username, period, api_key)
     print url
     raw_xml = urllib2.urlopen(url)
 
     print_list = []
     charts = ElementTree.fromstring(raw_xml.read())
 
-    if chart == 'artist':
-        for artist in charts.findall('artist'):
+    if chart == 'artists':
+        for artist in charts.findall('topartists/artist'):
             print_list.append(artist.find('name').text)
-    elif chart == 'album':
-        for album in charts.findall('album'):
+    elif chart == 'albums':
+        for album in charts.findall('topalbums/album'):
             for artist in album.findall('artist'):
                 print_list.append("%s-%s" % (artist.find('name').text, album.find('name').text))
-    elif chart == 'track':
-        for track in charts.findall('track'):
+    elif chart == 'tracks':
+        for track in charts.findall('toptracks/track'):
             for artist in track.findall('artist'):
                 print_list.append("%s-%s" % (artist.find('name').text, track.find('name').text))
     else:
@@ -177,7 +177,7 @@ USAGE
                             required=True, help="LastFM username [default: %(default)s]")
         parser.add_argument("-p", "--period", dest="period", action="store",
                             default='3month', help="LastFM period [default: %(default)s]")
-        parser.add_argument("-c", "--chart", dest="chart", choices=['album', 'artist', 'track'],
+        parser.add_argument("-c", "--chart", dest="chart", choices=['albums', 'artists', 'tracks'],
                             default='artist', help="Chart type [default: %(default)s]")
 
         parser.add_argument("-t", "--tweet", dest="tweet", action="store_true",
@@ -201,7 +201,7 @@ USAGE
 
         config=read_config()
         month = date.today().strftime('%B')
-        text = summarize(get_print_list(username, chart, period),
+        text = summarize(get_print_list(username, chart, period, config['lastfm_apikey']),
                          prefix="Top %s:\n" % (month, ))
 
         if tweet:
