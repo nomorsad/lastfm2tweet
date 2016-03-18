@@ -227,7 +227,6 @@ USAGE
 
 if __name__ == "__main__":
     if DEBUG:
-        sys.argv.append("-h")
         sys.argv.append("-v")
     if TESTRUN:
         import doctest
