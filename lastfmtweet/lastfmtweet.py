@@ -216,7 +216,7 @@ USAGE
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
-    except Exception, e:
+    except CLIError, e:
         if DEBUG or TESTRUN:
             raise (e)
         indent = len(program_name) * " "
