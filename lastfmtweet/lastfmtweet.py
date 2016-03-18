@@ -109,7 +109,7 @@ def summarize(print_list, prefix='', limit=140, limit_item=40):
     return text
 
 
-def publish_twitter(text, consumer_key, oauth_param):
+def publish_twitter(text, oauth_param):
     '''publish a status on Twitter'''
 
     auth = tweepy.OAuthHandler(oauth_param['consumer_key'], oauth_param['consumer_secret'])
