@@ -79,7 +79,7 @@ def get_print_list(username, chart, period, api_key):
     elif chart == 'albums':
         for album in charts.findall('topalbums/album'):
             for artist in album.findall('artist'):
-                print_list.append("%s@%s" % (artist.find('name').text, album.find('name').text))
+                print_list.append("%s|%s" % (artist.find('name').text, album.find('name').text))
     elif chart == 'tracks':
         for track in charts.findall('toptracks/track'):
             for artist in track.findall('artist'):
